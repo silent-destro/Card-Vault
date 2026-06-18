@@ -1,0 +1,156 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String           @id
+  email           String           @unique
+  name            String?
+  avatarUrl       String?
+  passwordHash    String?
+  phone           String?
+  plan            String           @default("free") // free | pro | business
+  expiresAt       DateTime?
+  createdBy       String?
+  createdAt       DateTime         @default(now())
+  cards           Card[]
+  upgradeRequests UpgradeRequest[]
+}
+
+model Card {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug             String           @unique
+  isActive         Boolean          @default(true)
+  customDomain     String?          @unique
+  
+  // Basics
+  businessName     String
+  category         String
+  tagline          String?
+  logoUrl          String?
+  theme            String           @default("dark-luxury")
+  
+  // Contact
+  phone            String
+  whatsapp         String
+  email            String?
+  website          String?
+  
+  // Location
+  address          String?
+  city             String
+  googleMapsUrl    String?
+  googleReviewUrl  String?
+  
+  // Social
+  instagramUrl     String?
+  facebookUrl      String?
+  youtubeUrl       String?
+  linkedinUrl      String?
+  whatsappChannel  String?
+  whatsappCommunity String?
+  twitterUrl       String?
+  
+  // Features
+  upiId            String?
+  hours            String           // Stored as JSON string (SQLite compatibility)
+  serviceTags      String           // Stored as comma-separated tags
+  photos           String           // Stored as comma-separated URLs
+  
+  // Settings
+  showReviewButton Boolean          @default(true)
+  showCatalog      Boolean          @default(false)
+  showBooking      Boolean          @default(false)
+  bookingSlotDuration Int           @default(30)
+  bookingFields     String          @default("service,birthday,anniversary")
+  showDetailsForm   Boolean          @default(false)
+  detailsFormFields String          @default("phone,service,birthday,anniversary")
+  isVerified       Boolean          @default(false)
+  googleFormUrl     String?
+  googleFormFields  String?
+  
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  analyticsEvents  AnalyticsEvent[]
+  reviews          Review[]
+  catalogItems     CatalogItem[]
+  bookings         Booking[]
+}
+
+model AnalyticsEvent {
+  id          String   @id @default(uuid())
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  eventType   String   // view | click | review_start | review_post
+  buttonName  String?  // call | whatsapp | review | pay | catalog | save_contact
+  deviceType  String?  // mobile | desktop | tablet
+  city        String?
+  referrer    String?  // whatsapp | qr | direct | other
+  createdAt   DateTime @default(now())
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  cardId       String
+  card         Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  starRating   Int
+  language     String   @default("en")
+  tone         String   @default("friendly")
+  selectedTags String   // Comma-separated tags
+  reviewText   String
+  variantIndex Int      // 1, 2, or 3
+  postedTo     String?  // google | facebook | copied
+  createdAt    DateTime @default(now())
+}
+
+model CatalogItem {
+  id          String   @id @default(uuid())
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  category    String?
+  sortOrder   Int      @default(0)
+  isVisible   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  cardId        String
+  card          Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  customerName  String
+  customerPhone String
+  serviceName   String
+  bookingDate   String   // ISO Date
+  bookingTime   String   // HH:MM
+  status        String   @default("pending") // pending | confirmed | cancelled
+  birthday      String?
+  anniversary   String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+}
+
+model UpgradeRequest {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan          String   // pro | business
+  billingCycle  String   // monthly | yearly
+  amount        Float
+  utr           String   // UPI Transaction Reference
+  status        String   @default("pending") // pending | approved | rejected
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
